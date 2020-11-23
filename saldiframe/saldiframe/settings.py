@@ -11,6 +11,12 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
+import environs
+import os
+
+# Read dot env file
+env = environs.Env()
+env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +26,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '-c73^qcv8bfy+b@%^w56+g^x*%@0kxdgsa18g#_74reo6-n5h4'
+SECRET_KEY = env.str('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost", "0.0.0.0", "127.0.0.1",
+    env.str('ALLOWED_HOST_4')
+]
 
 
 # Application definition
@@ -37,9 +46,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'tgbots',
 ]
 
 MIDDLEWARE = [
+    'django.middleware.cache.UpdateCacheMiddleware',  # Кэш
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -47,6 +59,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.cache.FetchFromCacheMiddleware',  # Кэш
 ]
 
 ROOT_URLCONF = 'saldiframe.urls'
@@ -76,9 +89,22 @@ WSGI_APPLICATION = 'saldiframe.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'db' / 'addresses.db',
     }
 }
+
+
+# Assumes you are using MySQL
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': env.str('DB_NAME'),
+#         'USER': env.str('DB_USER'),
+#         'PASSWORD': env.str('DB_PASSWORD'),
+#         'HOST': env.str('DB_HOST'),
+#         'PORT': env.str('DB_PORT'),
+#     }
+# }
 
 
 # Password validation
@@ -103,7 +129,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/3.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru'
 
 TIME_ZONE = 'UTC'
 
@@ -114,7 +140,47 @@ USE_L10N = True
 USE_TZ = True
 
 
+
+#AUTH_USER_MODEL = 'main.CustomUser'
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static')
+]
+
+
+# SMTP e-mailing settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = env.str('')
+EMAIL_PORT = env.int('EMAIL_PORT')
+EMAIL_HOST_USER = env.str('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env.str('EMAIL_HOST_APP_KEY')
+EMAIL_USE_TLS = True
+
+# Настройка кэша
+CACHE_MIDDLEWARE_SECONDS = 120  # В секундах
+CACHE_MIDDLEWARE_KEY_PREFIX = 'tgbots'
+CACHE_ENABLED = env.bool('CACHE_ENABLED')
+if CACHE_ENABLED:
+    # Кэш на основе файлов
+    cache = {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': BASE_DIR / 'cache',
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000
+        }
+    }
+else:
+    # Мнимый кэш (нужен для dev-сервера, чтобы он не работал на dev-сервер, а потом отключать его на prod-е)
+    cache = {
+          'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+        }
+CACHES = {
+    'default': cache
+}
