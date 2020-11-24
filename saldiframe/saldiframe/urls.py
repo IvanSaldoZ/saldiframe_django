@@ -5,7 +5,7 @@ from .settings import DEBUG
 urlpatterns = [
     #path('', include('tgbots.urls')),
     path('dinarapp1', include('dinarapp.urls')),
-    path('dinarapp2', include('dinarapp2.urls')),
+    path('', include('dinarapp2.urls')),
 ]
 
 if DEBUG:

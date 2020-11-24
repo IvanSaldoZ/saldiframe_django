@@ -52,9 +52,63 @@
 
 
 
-### Работа с моделями пользователей
+### Создание Super-пользователя
 
 1. Набираем `python manage.py migrate` для применения миграция.
 2. Создаем супер-пользователя `python manage.py createsuperuser`: `admin`/`123456`.
 3. Переходим в `http://127.0.0.1:8000/admin/` и вводим данные нашего пользователя.
 
+### Создаем модели
+
+1. В файле `models.py` пишем:
+    ```
+    from django.db import models
+    
+    # Create your models here.
+    class Articles(models.Model):
+        create_date = models.DateTimeField(auto_now=True)
+        name = models.CharField(max_length=200)
+        text = models.TextField()
+    ```
+2. Для отображения нашей модели в админ-панели добавляем ее в файл `admin.py`:
+    ```
+    from django.contrib import admin
+    from .models import Articles
+    
+    # Register your models here.
+    admin.site.register(Articles)
+    ```
+3. Для создания файла миграции нужно выполнить команду:
+    `python manage.py makemigrations dinarapp2`
+4. Для выполнения команд из файла миграций:
+    `python manage.py migrate`
+    
+
+
+### Bootstrap
+
+1. Переходим на getbootsrap.com > Documentation https://getbootstrap.com/docs/4.5/getting-started/introduction/ и копируем готовые стили:
+    ```
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.3/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
+    
+        <title>Hello, world!</title>
+      </head>
+      <body>
+        <h1>Hello, world!</h1>
+    
+        <!-- Optional JavaScript -->
+        <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+        <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.3/js/bootstrap.min.js" integrity="sha384-w1Q4orYjBQndcko6MimVbzY0tgp4pWB4lZ7lr30WKz0vr/aWKhXdBNmNb5D92v7s" crossorigin="anonymous"></script>
+      </body>
+    </html>
+    ```
