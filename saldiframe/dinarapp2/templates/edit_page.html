@@ -8,10 +8,12 @@
     Добавить статью
   </button>
 
-  {% if success %}
+  {% if messages %}
     <!-- Success alert after adding article -->
     <div class="alert alert-success mt-4" role="alert">
-      Статья добавлена
+      {% for m in messages %}
+        {{m}}
+      {% endfor %}
     </div>
   {% endif %}
 
@@ -44,18 +46,34 @@
       </thead>
       <tbody>
       {% for i in list_articles %}
-        <tr>
+      <!-- slugify используется для преобразования типов i.id в string -->
+        <tr {% if i.id|slugify == request.GET.id %}class="table-warning" {% endif %}>
           <th scope="row">{{ i.id }}</th>
           <td>{{ i.create_date }}</td>
           <td>{{ i.name }}</td>
-          <td><a href="{% url 'update_page' i.id %}">Ред.</a></td>
-          <td><a href="{% url 'delete_page' i.id %}">Удал.</a></td>
+          <td><a role="button" class="btn btn-secondary" href="{% url 'update_page' i.id %}">Редактировать</a></td>
+          <td>
+            <form id="delete_form_{{i.id}}" action="{% url 'delete_page' i.id %}" method="POST">
+              {% csrf_token %}
+            </form>
+            <button type="button" class="btn btn-dark" href="javascript:void()"
+                    onclick="delete_question({{i.id}}, '{{i.name}}')">Удалить</button>
+            <!-- Окно подтверждения при нажатии на кнопку "Удалить"-->
+            <script>
+              function delete_question(id, name) {
+                conf_msg = "Вы уверены, что хотите удалить статью "+name+"?"
+                if (confirm(conf_msg)) {
+                  el_id = "delete_form_" + id
+                  document.getElementById(el_id).submit()
+                }
+              }
+            </script>
+          </td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
   {% endif %}
-
 
   <!-- Modal window for adding article -->
   <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
