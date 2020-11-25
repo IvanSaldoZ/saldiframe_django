@@ -1,8 +1,11 @@
 from .models import Articles
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
-from .forms import ArticleForm
+from .forms import ArticleForm, AuthUserForm, RegisterUserForm
 from django.urls import reverse_lazy
 from django.contrib import messages
+from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login
 
 
 class CustomSuccessMessageMixin:
@@ -75,12 +78,45 @@ class ArticleDeleteView(DeleteView):
     # Что делать при успешном создании
     success_url = reverse_lazy('edit_page')
     success_msg = 'Статья удалена'
-
     def post(self, request, *args, **kwargs):
         """Переопределяем метод для отрпавки сообщения об удалении статьи"""
         messages.success(self.request, self.success_msg)
         return super().post(request)
 
 
+class RegisterUserView(CreateView):
+    """Регистрация пользователя"""
+    model = User
+    template_name = 'register_page.html'
+    # Передаем форму
+    form_class = RegisterUserForm
+    # Что делать при успешном создании
+    success_url = reverse_lazy('edit_page')
+    success_msg = 'Вы успешно прошли регистрацию. Спасибо'
+    # Переопределяем метод, который вызывается при отправке формы
+    # Авторизуем пользователя сразу после регистрации
+    def form_valid(self, form):
+        form_valid = super().form_valid(form)
+        username = form.cleaned_data["username"]
+        password = form.cleaned_data["password"]
+        # Авторизуем пользователя
+        auth_user = authenticate(username=username, password=password)
+        # и осуществляем вход
+        login(self.request, auth_user)
+        return form_valid
 
 
+
+class ProjectLoginView(LoginView):
+    """Авторизация пользователя"""
+    template_name = 'login.html'
+    form_class = AuthUserForm
+    success_url = reverse_lazy('edit_page')
+    # Переопределяем перенаправлении при успешной авторизации
+    def get_success_url(self):
+        return self.success_url
+
+
+class ProjectLogout(LogoutView):
+    """Выход пользователя из системы"""
+    next_page = reverse_lazy('edit_page')

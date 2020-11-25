@@ -169,4 +169,73 @@
 
 5. Модальное окно можно взять с https://getbootstrap.com/docs/4.5/components/modal/
 
-   
+
+### Регистрация и Авторизация пользователей
+
+http://ccbv.co.uk/projects/Django/3.0/django.contrib.auth.views/LogoutView/
+
+В forms.py:
+```
+class AuthUserForm(AuthenticationForm, forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ('username', 'password')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields:
+            self.fields[field].widget.attrs['class'] = 'form-control'
+
+
+class RegisterUserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ('username', 'password')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields:
+            self.fields[field].widget.attrs['class'] = 'form-control'
+    # Нужно переопределить метод save для пользователя, потому что по умолчанию нужно
+    # хэшировать пароли, а не просто их туда строкой сохранять.
+    # Этот метод основан на методе save класса UserCreationForm из django.contrib.auth.forms.py
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data["password"])
+        if commit:
+            user.save()
+        return user
+```   
+
+
+В views.py:
+```
+from django.contrib.auth.views import LoginView, LogoutView
+from .forms import ArticleForm, AuthUserForm, RegisterUserForm
+from django.urls import reverse_lazy
+from django.contrib.auth.models import User
+
+class RegisterUserView(CreateView):
+    """Регистрация пользователя"""
+    model = User
+    template_name = 'register_page.html'
+    # Передаем форму
+    form_class = RegisterUserForm
+    # Что делать при успешном создании
+    success_url = reverse_lazy('edit_page')
+    success_msg = 'Пользователь успешно создан'
+
+
+class ProjectLoginView(LoginView):
+    """Авторизация пользователя"""
+    template_name = 'login.html'
+    form_class = AuthUserForm
+    success_url = reverse_lazy('edit_page')
+    # Переопределяем перенаправлении при успешной авторизации
+    def get_success_url(self):
+        return self.success_url
+
+
+class ProjectLogout(LogoutView):
+    """Выход пользователя из системы"""
+    next_page = reverse_lazy('edit_page')
+
+```
