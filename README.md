@@ -6,6 +6,7 @@
 
     - tgbots - работа с шаблонным Телеграм-ботом
     - dinarapp - Тестовый проект на основе https://www.youtube.com/watch?v=YptkRsLNUi4
+    - dinarapp2 - Проект по управлению статьями в блоге, который можно брать за основу
     - db - папка с тестовой базой данных SQLite3
     - cache - папка для хранения файлов кэша, когда он включен 
 
@@ -112,3 +113,60 @@
       </body>
     </html>
     ```
+   
+2. Для меню можно выбрать шаблон из Navs:
+    https://getbootstrap.com/docs/4.5/components/navs/
+    
+    ```
+        <ul class="nav nav-pills">
+          <li class="nav-item">
+              {% url 'index' as url_home %}
+
+            <a class="nav-link{% if request.path == url_home %} active{% endif %}" href="{{ url_home }}">Главная</a>
+          </li>
+          <li class="nav-item">
+              {% url 'edit_page' as url_edit_page %}
+
+            <a class="nav-link{% if request.path == url_edit_page %} active{% endif %}" href="{{ url_edit_page }}">Создание/ред/удаление</a>
+          </li>
+        </ul>
+    ```
+    
+3. В index.html создаем общий контент:
+    ```
+        ...
+            {% block content %}
+                <h1 class="mt-4">Список статей</h1>
+    
+                {% for i in article_list %}
+                    <ul class="list-group mt-4">
+                        <li class="list-group-item">
+                            <b>{{ i.create_date }}</b>
+                            <span class="m-2">{{ i.name }}</span>
+                            <span>{{ i.text | truncatechars:"5" }}</span>
+    
+                            <span class="float-right mr-3"><a href="detail/{{ i.id }}">Перейти к статье</a></span>
+                        </li>
+                    </ul>
+                {% endfor %}
+    
+            {% endblock %}
+        ...
+    ```   
+    А в других файлах делаем так, чтобы отобразить в них что-то (`detail.html`)
+    ```
+    {% extends 'index.html' %}
+
+        {% block content %}
+                <h1 class="mt-4">Статья: {{ get_article.name }}</h1>
+                <p><a href="/">Вернуться на главную</a></p>
+                <p>Дата создания: {{get_article.create_date}}</p>
+                <p>Текст: {{ get_article.text }}</p>
+        {% endblock %}
+   ```
+   
+4. Таблицы можно взять с https://getbootstrap.com/docs/4.5/content/tables/
+
+5. Модальное окно можно взять с https://getbootstrap.com/docs/4.5/components/modal/
+
+   

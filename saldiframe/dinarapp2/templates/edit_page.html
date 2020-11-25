@@ -1,0 +1,87 @@
+{% extends 'index.html' %}
+
+{% block content %}
+  <h1 class="mt-4">Админ. панель</h1>
+
+  <!-- Button trigger modal -->
+  <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
+    Добавить статью
+  </button>
+
+  {% if success %}
+    <!-- Success alert after adding article -->
+    <div class="alert alert-success mt-4" role="alert">
+      Статья добавлена
+    </div>
+  {% endif %}
+
+  {% if update %}
+    <!-- Edit article page -->
+    <h3 class="mt-4">Страница редактирования</h3>
+    {% if success_update %}
+      <!-- Success alert after adding article -->
+      <div class="alert alert-success mt-4" role="alert">
+        Статья отредактирована
+      </div>
+    {% endif %}
+    <p><a href="{% url 'edit_page' %}">Вернуться на главную</a></p>
+    <form id="update_data" method="post">
+      {% csrf_token %}
+      {{form}}
+    </form>
+    <button form="update_data" type="submit" class="btn btn-primary">Сохранить</button>
+  {% else %}
+    <!-- Showing articles page -->
+    <table class="table table-striped mt-4">
+      <thead>
+        <tr>
+          <th scope="col">id</th>
+          <th scope="col">Дата создания</th>
+          <th scope="col">Название</th>
+          <th scope="col">Редактирование</th>
+          <th scope="col">Удаление</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for i in list_articles %}
+        <tr>
+          <th scope="row">{{ i.id }}</th>
+          <td>{{ i.create_date }}</td>
+          <td>{{ i.name }}</td>
+          <td><a href="{% url 'update_page' i.id %}">Ред.</a></td>
+          <td><a href="{% url 'delete_page' i.id %}">Удал.</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+
+  <!-- Modal window for adding article -->
+  <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="add_form" method="post">
+            {% csrf_token %}
+            {{form}}
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">закрыть</button>
+          <button form="add_form" type="submit" class="btn btn-primary">Добавить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}
+
+
+
