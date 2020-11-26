@@ -1,10 +1,11 @@
 from django import forms
-from .models import Articles
+from .models import Articles, Comments
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.models import User
 
 
 class ArticleForm(forms.ModelForm):
+    """Форма добавления статьи"""
     class Meta:
         model = Articles
         fields = ('name', 'text')
@@ -15,6 +16,7 @@ class ArticleForm(forms.ModelForm):
 
 
 class AuthUserForm(AuthenticationForm, forms.ModelForm):
+    """Форма авторизации пользователя"""
     class Meta:
         model = User
         fields = ('username', 'password')
@@ -25,6 +27,7 @@ class AuthUserForm(AuthenticationForm, forms.ModelForm):
 
 
 class RegisterUserForm(forms.ModelForm):
+    """Форма регистрации пользователя"""
     class Meta:
         model = User
         fields = ('username', 'password')
@@ -41,3 +44,15 @@ class RegisterUserForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+
+class CommentForm(forms.ModelForm):
+    """Форма добавления комментария"""
+    class Meta:
+        model = Comments
+        fields = ('text',)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields:
+            self.fields[field].widget.attrs['class'] = 'form-control'
+            self.fields['text'].widget = forms.Textarea(attrs={'rows': 5})

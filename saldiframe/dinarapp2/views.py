@@ -1,13 +1,14 @@
 from .models import Articles
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
-from .forms import ArticleForm, AuthUserForm, RegisterUserForm
+from django.views.generic.edit import FormMixin
+from .forms import ArticleForm, AuthUserForm, RegisterUserForm, CommentForm
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 
 
 class CustomSuccessMessageMixin:
@@ -40,12 +41,45 @@ class HomeListView(ListView):
     context_object_name = 'article_list'
 
 
-class HomeDetailView(DetailView):
+class HomeDetailView(CustomSuccessMessageMixin, FormMixin, DetailView):
     """Контролер - одна статья"""
     model = Articles
     template_name = 'detail.html'
     context_object_name = 'get_article'
+    form_class = CommentForm
+    success_msg = 'Комментарий успешно создан, ожидайте модерации'
 
+    def post(self, request, *args, **kwargs):
+        """Переопределяем метод POST при публикации комментария
+        с помощью формы"""
+        form = self.get_form()
+        if form.is_valid():
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+
+    def get_success_url(self, **kwargs):
+        """При успешндом добавлении комментария перенаправить на страницу статьи"""
+        return reverse_lazy('detail', kwargs={'pk': self.get_object().id})
+
+    def form_valid(self, form):
+        """Переопределяем метод, который вызывается при отправке формы
+        Сохраняем комментарий, если форма валидна
+        :param form:
+        :return:
+        """
+        # Получаем данные для записи в БД,
+        # но не сохраняем в БД пока что
+        self.object = form.save(commit=False)
+        # Получаем то, для какой статьи идет добавление комментария
+        # self.get_object() - возвращает объект той статьи,
+        # для которой применена вьюшка
+        self.object.article = self.get_object()
+        # Получаем то, какой пользователь отправл комментарий
+        self.object.author = self.request.user
+        # Сохраняем в базу данных
+        self.object.save()
+        return super().form_valid(form)
 
 class ArticleCreateView(LoginRequiredMixin, CustomSuccessMessageMixin, CreateView):
     """Класс вида создания статьи"""

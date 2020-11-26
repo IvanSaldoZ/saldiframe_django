@@ -324,3 +324,113 @@ http://ccbv.co.uk/projects/Django/3.0/django.contrib.auth.views/LogoutView/
             return HttpResponseRedirect(success_url)
 ```
 
+### Добавление комментариев:
+
+1. Добавляем модели:
+    ```
+    class Comments(models.Model):
+        """Модель комментариев"""
+        article = models.ForeignKey(Articles, on_delete=models.CASCADE, verbose_name='Статья',
+                                   blank=True, null=True, related_name='comments_articles')
+        author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Автор комментария',
+                                   blank=True, null=True)
+        create_date = models.DateTimeField(auto_now=True, verbose_name='Дата создания')
+        text = models.TextField(verbose_name='Текст комментария')
+        status = models.BooleanField(verbose_name='Видимость комментария', default=False)
+   
+    ```
+
+2. Добавляем формы:
+    ```
+    class CommentForm(forms.ModelForm):
+        """Форма добавления комментария"""
+        class Meta:
+            model = Comments
+            fields = ('text',)
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            for field in self.fields:
+                self.fields[field].widget.attrs['class'] = 'form-control'
+    ```
+   
+3. Расширяем контроллер просмотра статьи чере миксин добавления формы:
+    ```
+    from django.views.generic.edit import FormMixin
+   
+    class HomeDetailView(CustomSuccessMessageMixin, FormMixin, DetailView):
+        """Контролер - одна статья"""
+        model = Articles
+        template_name = 'detail.html'
+        context_object_name = 'get_article'
+        form_class = CommentForm
+        success_msg = 'Комментарий успешно создан, ожидайте модерации'
+    
+        def post(self, request, *args, **kwargs):
+            """Переопределяем метод POST при публикации комментария
+            с помощью формы"""
+            form = self.get_form()
+            if form.is_valid():
+                return self.form_valid(form)
+            else:
+                return self.form_invalid(form)
+    
+        def get_success_url(self, **kwargs):
+            """При успешндом добавлении комментария перенаправить на страницу статьи"""
+            return reverse_lazy('detail', kwargs={'pk': self.get_object().id})
+    
+        def form_valid(self, form):
+            """Переопределяем метод, который вызывается при отправке формы
+            Сохраняем комментарий, если форма валидна
+            :param form:
+            :return:
+            """
+            # Получаем данные для записи в БД,
+            # но не сохраняем в БД пока что
+            self.object = form.save(commit=False)
+            # Получаем то, для какой статьи идет добавление комментария
+            # self.get_object() - возвращает объект той статьи,
+            # для которой применена вьюшка
+            self.object.article = self.get_object()
+            # Получаем то, какой пользователь отправл комментарий
+            self.object.author = self.request.user
+            # Сохраняем в базу данных
+            self.object.save()
+            return super().form_valid(form)
+    ```
+
+4. Добавляем вид в `detail.html`:
+    ```
+        <h4>Комментарии ({{get_article.comments_articles.all.count}})</h4>
+
+          {% if messages %}
+            <!-- Success alert after adding article -->
+            <div class="alert alert-success mt-4" role="alert">
+              {% for m in messages %}
+                {{m}}
+              {% endfor %}
+            </div>
+          {% endif %}
+
+        <ul>
+        {% for item in get_article.comments_articles.all %}
+            <li>
+                Дата создания: {{ item.create_date }}<br>
+                Автор: {{ item.author }}<br>
+                Статус комментария: {{ item.status }}<br><br>
+                Текст: {{ item.text }}<br>
+            </li>
+        {% endfor %}
+        </ul>
+        <hr>
+
+        <h5>Добавить комментарии</h5>
+
+        <div class="col-4">
+          <form action="" id="add_form" method="post">
+            {% csrf_token %}
+            {{form.as_p}}
+          </form>
+          <button form="add_form" type="submit" class="btn btn-primary">Добавить комментарий</button>
+        </div>
+    ```
+
