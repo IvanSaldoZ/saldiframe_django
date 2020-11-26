@@ -6,6 +6,8 @@ from django.contrib import messages
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import HttpResponseRedirect
 
 
 class CustomSuccessMessageMixin:
@@ -45,39 +47,84 @@ class HomeDetailView(DetailView):
     context_object_name = 'get_article'
 
 
-class ArticleCreateView(CustomSuccessMessageMixin, CreateView):
+class ArticleCreateView(LoginRequiredMixin, CustomSuccessMessageMixin, CreateView):
     """Класс вида создания статьи"""
+    login_url = reverse_lazy('login_page')
     model = Articles
     template_name = 'edit_page.html'
     form_class = ArticleForm
     # Что делать при успешном создании
     success_url = reverse_lazy('edit_page')
     success_msg = 'Статья создана'
+
     def get_context_data(self, **kwargs):
         kwargs['list_articles'] = Articles.objects.all().order_by('-id')
         return super().get_context_data(**kwargs)
 
+    # Переопределяем метод, который вызывается при отправке формы
+    # Определяем пользователя, который добавил статью
+    def form_valid(self, form):
+        # Получаем данные для записи в БД,
+        # но не сохраняем в БД пока что
+        self.object = form.save(commit=False)
+        # Обновляем автора, чтобы он был тем, кто делает отправку
+        self.object.author = self.request.user
+        # Сохраняем в базу данных
+        self.object.save()
+        return super().form_valid(form)
 
-class ArticleUpdateView(CustomSuccessMessageMixin, UpdateView):
+
+class ArticleUpdateView(LoginRequiredMixin, CustomSuccessMessageMixin, UpdateView):
     """Класс вида редактирования статьи"""
+    login_url = reverse_lazy('login_page')
     model = Articles
     template_name = 'edit_page.html'
     form_class = ArticleForm
-    # Что делать при успешном создании
+    # Что делать при успешном редактировании
     success_url = reverse_lazy('edit_page')
     success_msg = 'Статья успешно отредактирована'
+
     def get_context_data(self, **kwargs):
+        """Переопределяем метод при обновлении контекста
+        Insert the form into the context dict."""
         kwargs['update'] = True
         return super().get_context_data(**kwargs)
 
+    def get_form_kwargs(self):
+        """Переопределяем метод родительского класса при инициализации формы
+        Return the keyword arguments for instantiating the form."""
+        kwargs = super().get_form_kwargs()
+        # Если Автор статьи != Текущий пользователь
+        if kwargs['instance'].author != self.request.user:
+            # То, отказываем в доступе
+            return self.handle_no_permission()
+        return kwargs
 
-class ArticleDeleteView(DeleteView):
+
+class ArticleDeleteView(LoginRequiredMixin, DeleteView):
     """Класс для удаления статьи"""
+    login_url = reverse_lazy('login_page')
     model = Articles
     template_name = 'edit_page.html'
     # Что делать при успешном создании
     success_url = reverse_lazy('edit_page')
     success_msg = 'Статья удалена'
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Переопределение метода удаления для разграничения прав доступа
+        Call the delete() method on the fetched object and then redirect to the
+        success URL.
+        """
+        self.object = self.get_object()
+        # Если Автор статьи != Текущий пользователь
+        if self.object.author != self.request.user:
+            # То, отказываем в доступе
+            return self.handle_no_permission()
+        success_url = self.get_success_url()
+        self.object.delete()
+        return HttpResponseRedirect(success_url)
+
     def post(self, request, *args, **kwargs):
         """Переопределяем метод для отрпавки сообщения об удалении статьи"""
         messages.success(self.request, self.success_msg)
@@ -93,6 +140,7 @@ class RegisterUserView(CreateView):
     # Что делать при успешном создании
     success_url = reverse_lazy('edit_page')
     success_msg = 'Вы успешно прошли регистрацию. Спасибо'
+
     # Переопределяем метод, который вызывается при отправке формы
     # Авторизуем пользователя сразу после регистрации
     def form_valid(self, form):
@@ -106,12 +154,12 @@ class RegisterUserView(CreateView):
         return form_valid
 
 
-
 class ProjectLoginView(LoginView):
     """Авторизация пользователя"""
     template_name = 'login.html'
     form_class = AuthUserForm
     success_url = reverse_lazy('edit_page')
+
     # Переопределяем перенаправлении при успешной авторизации
     def get_success_url(self):
         return self.success_url
@@ -119,4 +167,4 @@ class ProjectLoginView(LoginView):
 
 class ProjectLogout(LogoutView):
     """Выход пользователя из системы"""
-    next_page = reverse_lazy('edit_page')
+    next_page = reverse_lazy('index')

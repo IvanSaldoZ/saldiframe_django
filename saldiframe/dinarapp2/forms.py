@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 class ArticleForm(forms.ModelForm):
     class Meta:
         model = Articles
-        fields = '__all__'
+        fields = ('name', 'text')
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields:

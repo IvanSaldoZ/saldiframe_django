@@ -49,30 +49,41 @@
       <!-- slugify используется для преобразования типов i.id в string -->
         <tr {% if i.id|slugify == request.GET.id %}class="table-warning" {% endif %}>
           <th scope="row">{{ i.id }}</th>
-          <td>{{ i.create_date }}</td>
+          <td>{{ i.create_date|date:'d.m.Y' }} - {{ i.author }}</td>
           <td>{{ i.name }}</td>
-          <td><a role="button" class="btn btn-secondary" href="{% url 'update_page' i.id %}">Редактировать</a></td>
           <td>
-            <form id="delete_form_{{i.id}}" action="{% url 'delete_page' i.id %}" method="POST">
-              {% csrf_token %}
-            </form>
-            <button type="button" class="btn btn-dark" href="javascript:void()"
-                    onclick="delete_question({{i.id}}, '{{i.name}}')">Удалить</button>
-            <!-- Окно подтверждения при нажатии на кнопку "Удалить"-->
-            <script>
-              function delete_question(id, name) {
-                conf_msg = "Вы уверены, что хотите удалить статью "+name+"?"
-                if (confirm(conf_msg)) {
-                  el_id = "delete_form_" + id
-                  document.getElementById(el_id).submit()
-                }
-              }
-            </script>
+            <!-- Отображаем только для авторов своих статей -->
+            {% if request.user == i.author %}
+              <a role="button" class="btn btn-secondary" href="{% url 'update_page' i.id %}">Редактировать</a></td>
+            {% else %}
+              -
+            {% endif %}
+          <td>
+            <!-- Отображаем только для авторов своих статей -->
+            {% if request.user == i.author %}
+              <form id="delete_form_{{i.id}}" action="{% url 'delete_page' i.id %}" method="POST">
+                {% csrf_token %}
+              </form>
+              <button type="button" class="btn btn-dark" href="javascript:void()"
+                      onclick="delete_question({{i.id}}, '{{i.name}}')">Удалить</button>
+            {% else %}
+              -
+            {% endif %}
           </td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
+    <!-- Окно подтверждения при нажатии на кнопку "Удалить"-->
+    <script>
+      function delete_question(id, name) {
+        conf_msg = "Вы уверены, что хотите удалить статью "+name+"?"
+        if (confirm(conf_msg)) {
+          el_id = "delete_form_" + id
+          document.getElementById(el_id).submit()
+        }
+      }
+    </script>
   {% endif %}
 
   <!-- Modal window for adding article -->

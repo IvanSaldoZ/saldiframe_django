@@ -172,70 +172,155 @@
 
 ### Регистрация и Авторизация пользователей
 
+1. В forms.py:
+    ```
+    class AuthUserForm(AuthenticationForm, forms.ModelForm):
+        class Meta:
+            model = User
+            fields = ('username', 'password')
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            for field in self.fields:
+                self.fields[field].widget.attrs['class'] = 'form-control'
+    
+    
+    class RegisterUserForm(forms.ModelForm):
+        class Meta:
+            model = User
+            fields = ('username', 'password')
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            for field in self.fields:
+                self.fields[field].widget.attrs['class'] = 'form-control'
+        # Нужно переопределить метод save для пользователя, потому что по умолчанию нужно
+        # хэшировать пароли, а не просто их туда строкой сохранять.
+        # Этот метод основан на методе save класса UserCreationForm из django.contrib.auth.forms.py
+        def save(self, commit=True):
+            user = super().save(commit=False)
+            user.set_password(self.cleaned_data["password"])
+            if commit:
+                user.save()
+            return user
+    ```   
+
+
+2. В views.py:
+    ```
+    from django.contrib.auth.views import LoginView, LogoutView
+    from .forms import ArticleForm, AuthUserForm, RegisterUserForm
+    from django.urls import reverse_lazy
+    from django.contrib.auth.models import User
+    
+    class RegisterUserView(CreateView):
+        """Регистрация пользователя"""
+        model = User
+        template_name = 'register_page.html'
+        # Передаем форму
+        form_class = RegisterUserForm
+        # Что делать при успешном создании
+        success_url = reverse_lazy('edit_page')
+        success_msg = 'Пользователь успешно создан'
+    
+    
+    class ProjectLoginView(LoginView):
+        """Авторизация пользователя"""
+        template_name = 'login.html'
+        form_class = AuthUserForm
+        success_url = reverse_lazy('edit_page')
+        # Переопределяем перенаправлении при успешной авторизации
+        def get_success_url(self):
+            return self.success_url
+    
+    
+    class ProjectLogout(LogoutView):
+        """Выход пользователя из системы"""
+        next_page = reverse_lazy('edit_page')
+    
+    ```
+
+3. Проверка в шаблоне, авторизован ли пользователь: `{% if request.user.is_authenticated %}`
+
+
+### База данных всех методов View из Django:
+
 http://ccbv.co.uk/projects/Django/3.0/django.contrib.auth.views/LogoutView/
 
-В forms.py:
+
+### При добавлении нового поля в базу данных:
+
+1. Обязательно нужно сделать поле необязательным, чтобы применить миграции:
+    ```
+    author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Владелец статьи',
+                                   blank=True, null=True)
+    ```
+
+2. Выполнить команду `python manage.py makemigrations` для создания файла миграций из новых моделей
+3. Выполнить команду `python manage.py migrate` для внесения изменений в базу данных
+
+
+### Разграничение прав доступа
+
+1. Примешиваем класс для авторизации в тот класс, который мы хотим закрыть
+
+`from django.contrib.auth.mixins import LoginRequiredMixin`
+
+и добавляем его в класс, который должен быть доступен только для авторизованных пользователей:
+
+    ```
+    class ArticleCreateView(LoginRequiredMixin, CustomSuccessMessageMixin, CreateView):
+        """Класс вида создания статьи"""
+        model = Articles
+        template_name = 'edit_page.html'
+        form_class = ArticleForm
+        ...
+    ```
+
+2. Для того, чтобы допускать до редактирования только того пользователя, который является автором,
+переопределеяем метод get_form_kwargs класса ModelFormMixin из django.views.generic.edit:
+
+    ```
+    class ArticleUpdateView(LoginRequiredMixin, CustomSuccessMessageMixin, UpdateView):
+        """Класс вида редактирования статьи"""
+
+        ...
+
+        def get_form_kwargs(self):
+            """Переопределяем метод родительского класса при инициализации формы
+            Return the keyword arguments for instantiating the form."""
+            kwargs = super().get_form_kwargs()
+            # Если Автор статьи != Текущий пользователь
+            if kwargs['instance'].author != self.request.user:
+                # То, отказываем в доступе
+                return self.handle_no_permission()
+            return kwargs
+    ```
+
+3. Для того, чтобы не допускать удаления переопределяем метод delete класса DeletionMixin в
+модуле django.views.generic.edit:
 ```
-class AuthUserForm(AuthenticationForm, forms.ModelForm):
-    class Meta:
-        model = User
-        fields = ('username', 'password')
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in self.fields:
-            self.fields[field].widget.attrs['class'] = 'form-control'
-
-
-class RegisterUserForm(forms.ModelForm):
-    class Meta:
-        model = User
-        fields = ('username', 'password')
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in self.fields:
-            self.fields[field].widget.attrs['class'] = 'form-control'
-    # Нужно переопределить метод save для пользователя, потому что по умолчанию нужно
-    # хэшировать пароли, а не просто их туда строкой сохранять.
-    # Этот метод основан на методе save класса UserCreationForm из django.contrib.auth.forms.py
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        user.set_password(self.cleaned_data["password"])
-        if commit:
-            user.save()
-        return user
-```   
-
-
-В views.py:
+    from django.http import HttpResponseRedirect
+    
+    class ArticleDeleteView(LoginRequiredMixin, DeleteView):
+        """Класс для удаления статьи"""
+        model = Articles
+        template_name = 'edit_page.html'
+        # Что делать при успешном создании
+        success_url = reverse_lazy('edit_page')
+        success_msg = 'Статья удалена'
+    
+        def delete(self, request, *args, **kwargs):
+            """
+            Переопределение метода удаления для разграничения прав доступа
+            Call the delete() method on the fetched object and then redirect to the
+            success URL.
+            """
+            self.object = self.get_object()
+            # Если Автор статьи != Текущий пользователь
+            if self.object.author != self.request.user:
+                # То, отказываем в доступе
+                return self.handle_no_permission()
+            success_url = self.get_success_url()
+            self.object.delete()
+            return HttpResponseRedirect(success_url)
 ```
-from django.contrib.auth.views import LoginView, LogoutView
-from .forms import ArticleForm, AuthUserForm, RegisterUserForm
-from django.urls import reverse_lazy
-from django.contrib.auth.models import User
 
-class RegisterUserView(CreateView):
-    """Регистрация пользователя"""
-    model = User
-    template_name = 'register_page.html'
-    # Передаем форму
-    form_class = RegisterUserForm
-    # Что делать при успешном создании
-    success_url = reverse_lazy('edit_page')
-    success_msg = 'Пользователь успешно создан'
-
-
-class ProjectLoginView(LoginView):
-    """Авторизация пользователя"""
-    template_name = 'login.html'
-    form_class = AuthUserForm
-    success_url = reverse_lazy('edit_page')
-    # Переопределяем перенаправлении при успешной авторизации
-    def get_success_url(self):
-        return self.success_url
-
-
-class ProjectLogout(LogoutView):
-    """Выход пользователя из системы"""
-    next_page = reverse_lazy('edit_page')
-
-```
