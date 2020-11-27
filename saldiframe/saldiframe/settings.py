@@ -61,6 +61,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.cache.FetchFromCacheMiddleware',  # Кэш
+
+    'dinarapp2.middleware.CurrentRequestMiddlewareUser',
 ]
 
 ROOT_URLCONF = 'saldiframe.urls'
@@ -140,9 +142,9 @@ USE_L10N = True
 
 USE_TZ = True
 
-
-
 #AUTH_USER_MODEL = 'main.CustomUser'
+# Переопределяем страницу авторизации пользователей
+LOGIN_URL = 'login_page'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/

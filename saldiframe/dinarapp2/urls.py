@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import HomeListView, HomeDetailView, ArticleCreateView, ArticleUpdateView, ArticleDeleteView, \
-    ProjectLoginView, RegisterUserView, ProjectLogout
+    ProjectLoginView, RegisterUserView, ProjectLogout, update_comment_status
 
 
 urlpatterns = [
@@ -12,4 +12,8 @@ urlpatterns = [
     path('login', ProjectLoginView.as_view(), name='login_page'),
     path('register', RegisterUserView.as_view(), name='register_page'),
     path('logout', ProjectLogout.as_view(), name='logout_page'),
+
+    # ajax
+    path('update_comment_status/<int:pk>/<slug:type>', update_comment_status, name='update_comment_status'),
+
 ]

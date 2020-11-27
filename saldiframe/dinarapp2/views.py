@@ -1,4 +1,4 @@
-from .models import Articles
+from .models import Articles, Comments
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.views.generic.edit import FormMixin
 from .forms import ArticleForm, AuthUserForm, RegisterUserForm, CommentForm
@@ -9,6 +9,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseRedirect, HttpResponse
+from django.shortcuts import render
+
 
 
 class CustomSuccessMessageMixin:
@@ -80,6 +82,7 @@ class HomeDetailView(CustomSuccessMessageMixin, FormMixin, DetailView):
         # Сохраняем в базу данных
         self.object.save()
         return super().form_valid(form)
+
 
 class ArticleCreateView(LoginRequiredMixin, CustomSuccessMessageMixin, CreateView):
     """Класс вида создания статьи"""
@@ -202,3 +205,32 @@ class ProjectLoginView(LoginView):
 class ProjectLogout(LogoutView):
     """Выход пользователя из системы"""
     next_page = reverse_lazy('index')
+
+
+def update_comment_status(request, pk, type):
+    """Обновляем статус комментария"""
+    item = Comments.objects.get(pk=pk)
+    if request.user != item.article.author:
+        return HttpResponse('deny')
+    if type == 'public':
+        # Меняем статус на противоположный (спец. модуль)
+        item.status = not item.status
+        # Сохраняем в базу
+        item.save()
+        # Обновляем template с помощью встроенных в Django методов Template и Context
+        template_name = 'comment_item.html'
+        context = {
+            'item': item,
+            'status_comment': 'Комментарий опубликован',
+        }
+        # Возвращаем:
+        return render(request=request, template_name=template_name, context=context)
+    elif type == 'delete':
+        # Удаляем и возвращаем пустоту
+        item.delete()
+        return HttpResponse("""
+            <div class="alert alert-success" role="alert">
+                  Комментарий удален
+            </div>
+        """)
+    return HttpResponse('1')
