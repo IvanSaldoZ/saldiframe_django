@@ -13,7 +13,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-8">
-                    <ul class="nav nav-pills col-8">
+                    <ul class="nav nav-pills">
                       <li class="nav-item">
                           {% url 'index' as url_home %}
                         <a class="nav-link{% if request.path == url_home %} active{% endif %}" href="{{ url_home }}">Главная</a>
@@ -40,7 +40,9 @@
                     </ul>
                 </div>
                 <div class="col-4">
-                    <span class="float-right mr-3"> <h4>[{{request.user}}]</h4></span>
+                    {% if request.user.is_authenticated %}
+                        <span class="float-right mr-3"> <h4>[{{request.user}}]</h4></span>
+                    {% endif %}
                 </div>
             </div>
         </div>
