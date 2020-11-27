@@ -5,7 +5,7 @@
                     Текст: {{ item.text }}<br>
                     {% if item.article.author == request.user %}
                         <!-- AJAX - обработка запросов ниже -->
-                        <a data-url="{% url 'update_comment_status' item.id 'public' %}" role="button" class="update_status btn btn-primary btn-sm" href="#">Одобрить</a> /
+                        <a data-url="{% url 'update_comment_status' item.id 'public' %}" role="button" class="update_status btn btn-primary btn-sm" href="#">Одобрить</a>
                         <a data-url="{% url 'update_comment_status' item.id 'delete' %}" role="button" class="update_status btn btn-secondary btn-sm" href="#">Удалить</a>
                     {% endif %}
 

@@ -41,6 +41,7 @@ class HomeListView(ListView):
     model = Articles
     template_name = 'index.html'
     context_object_name = 'article_list'
+    ordering = '-id'
 
 
 class HomeDetailView(CustomSuccessMessageMixin, FormMixin, DetailView):
@@ -82,6 +83,7 @@ class HomeDetailView(CustomSuccessMessageMixin, FormMixin, DetailView):
         # Сохраняем в базу данных
         self.object.save()
         return super().form_valid(form)
+
 
 
 class ArticleCreateView(LoginRequiredMixin, CustomSuccessMessageMixin, CreateView):

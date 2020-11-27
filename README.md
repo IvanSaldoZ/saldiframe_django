@@ -445,102 +445,103 @@ http://ccbv.co.uk/projects/Django/3.0/django.contrib.auth.views/LogoutView/
     ```
    
 2. Добавляем в модели models.py фильтр комментариев для отображения в зависимости от того, автор ли комментария или автор статьи
-```
-from .middleware import get_current_user
-from django.db.models import Q
-
-
-class StatusFilterComments(models.Manager):
-    """Класс для отображения только тех комментариев,
-     который имеют статус True"""
-
-    def get_queryset(self):
-        """Переопределяем метод получения данных"""
-        # Используем фильтр и метод Q из django.db.model для того, чтобы составить сложные запросы
-        # Здесь например мы видим только:
-        #   - комментарии, которые имеют статус False и при этом оставлены мной
-        #   - комментарии, которые имеют статус False и при этом Я являюсь автором статьи
-        #   - комментарии, которые имеют статус True
-        # Вертикальная черта | означает условие ИЛИ
-        return super().get_queryset().filter(Q(status=False, author=get_current_user())
-                                             | Q(status=False, article__author=get_current_user())
-                                             | Q(status=True))
-
-class Comments(models.Model):
-    """Модель комментариев"""
-    ...
-    # Переопределение объектов - комментариев. Отображаем только те, которые имеют статус True
-    objects = StatusFilterComments()
-
-
-```
+    ```
+    from .middleware import get_current_user
+    from django.db.models import Q
+    
+    
+    class StatusFilterComments(models.Manager):
+        """Класс для отображения только тех комментариев,
+         который имеют статус True"""
+    
+        def get_queryset(self):
+            """Переопределяем метод получения данных"""
+            # Используем фильтр и метод Q из django.db.model для того, чтобы составить сложные запросы
+            # Здесь например мы видим только:
+            #   - комментарии, которые имеют статус False и при этом оставлены мной
+            #   - комментарии, которые имеют статус False и при этом Я являюсь автором статьи
+            #   - комментарии, которые имеют статус True
+            # Вертикальная черта | означает условие ИЛИ
+            return super().get_queryset().filter(Q(status=False, author=get_current_user())
+                                                 | Q(status=False, article__author=get_current_user())
+                                                 | Q(status=True))
+    
+    class Comments(models.Model):
+        """Модель комментариев"""
+        ...
+        # Переопределение объектов - комментариев. Отображаем только те, которые имеют статус True
+        objects = StatusFilterComments()
+    
+    
+    ```
 
 
 3. Создаем Middleware файл `middleware.py`, чтобы ее использовать для обработки запросов из предыдущей модели:
-```
-# Наши Middleware
-from django.utils.deprecation import MiddlewareMixin
-
-import threading
-
-# Хранилище для данных о запросе
-_local_storage = threading.local()
-
-class CurrentRequestMiddlewareUser(MiddlewareMixin):
-    """Middleware для отображения данных по пользователю"""
-
-    def process_request(self, request):
-        """При посылке запроса - обрабатываем его путем """
-        _local_storage.request = request
-
-
-def get_current_request():
-    """Получаем текущее хранилище"""
-    return getattr(_local_storage, 'request', None)
-
-def get_current_user():
-    request = get_current_request()
-    if request is None:
-        return None
-    # Вернем атрибут, а если нет ничего, то вернем None
-    return getattr(request, 'user', None)
-
-```
+    ```
+    # Наши Middleware
+    from django.utils.deprecation import MiddlewareMixin
+    
+    import threading
+    
+    # Хранилище для данных о запросе
+    _local_storage = threading.local()
+    
+    class CurrentRequestMiddlewareUser(MiddlewareMixin):
+        """Middleware для отображения данных по пользователю"""
+    
+        def process_request(self, request):
+            """При посылке запроса - обрабатываем его путем """
+            _local_storage.request = request
+    
+    
+    def get_current_request():
+        """Получаем текущее хранилище"""
+        return getattr(_local_storage, 'request', None)
+    
+    def get_current_user():
+        request = get_current_request()
+        if request is None:
+            return None
+        # Вернем атрибут, а если нет ничего, то вернем None
+        return getattr(request, 'user', None)
+    
+    ```
 
 
 4. Для обработки AJAX-запроса создаем обработчик в views.py:
-```
-def update_comment_status(request, pk, type):
-    """Обновляем статус комментария"""
-    item = Comments.objects.get(pk=pk)
-    if request.user != item.article.author:
-        return HttpResponse('deny')
-    if type == 'public':
-        # Меняем статус на противоположный (спец. модуль)
-        item.status = not item.status
-        # Сохраняем в базу
-        item.save()
-        # Обновляем template с помощью встроенных в Django методов Template и Context
-        template_name = 'comment_item.html'
-        context = {
-            'item': item,
-            'status_comment': 'Комментарий опубликован',
-        }
-        # Возвращаем:
-        return render(request=request, template_name=template_name, context=context)
-    elif type == 'delete':
-        # Удаляем и возвращаем пустоту
-        item.delete()
-        return HttpResponse("""
-            <div class="alert alert-success" role="alert">
-                  Комментарий удален
-            </div>
-        """)
-    return HttpResponse('1')
-```
+    ```
+    def update_comment_status(request, pk, type):
+        """Обновляем статус комментария"""
+        item = Comments.objects.get(pk=pk)
+        if request.user != item.article.author:
+            return HttpResponse('deny')
+        if type == 'public':
+            # Меняем статус на противоположный (спец. модуль)
+            item.status = not item.status
+            # Сохраняем в базу
+            item.save()
+            # Обновляем template с помощью встроенных в Django методов Template и Context
+            template_name = 'comment_item.html'
+            context = {
+                'item': item,
+                'status_comment': 'Комментарий опубликован',
+            }
+            # Возвращаем:
+            return render(request=request, template_name=template_name, context=context)
+        elif type == 'delete':
+            # Удаляем и возвращаем пустоту
+            item.delete()
+            return HttpResponse("""
+                <div class="alert alert-success" role="alert">
+                      Комментарий удален
+                </div>
+            """)
+        return HttpResponse('1')
+    ```
 
 
 5. Чтобы это все работало делаем шаблон:
+    ```
           {% if messages %}
             <!-- Success alert after adding article -->
             <div class="alert alert-success mt-4" role="alert">
@@ -549,49 +550,42 @@ def update_comment_status(request, pk, type):
               {% endfor %}
             </div>
           {% endif %}
-
-
-
-{% block js %}
-
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-
-<script>
-
-    //При клике на обновлении статуса комментария - одобрение или удаление
-    //$('.update_status').click(function(event) {
-    $('body').on('click', '.update_status', function(event) {
-        event.preventDefault(); //Предотвращаем перезагрузку страницы
-        if (confirm('Вы уверены?'))
-        {
-            //Получаем URL, по которому это будет всё происходить
-            var url=$(this).attr('data-url')
-            //Получаем содержимое текущего тэга li
-            var tag_li = $(this).parent()
-            //console.log('-----', url)
-            //Выполняем AJAX-запрос
-            $.ajax({
-                url: url,
-                type: 'GET',
-                //Если запрос успешен, то возвращаем success:
-                success: function (response) {
-                    //console.log(response)
-                    //Заполняем тэг li нашими новыми данными
-                    tag_li.html(response)
+        {% block js %}
+        <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+        <script>
+            //При клике на обновлении статуса комментария - одобрение или удаление
+            //$('.update_status').click(function(event) {
+            $('body').on('click', '.update_status', function(event) {
+                event.preventDefault(); //Предотвращаем перезагрузку страницы
+                if (confirm('Вы уверены?'))
+                {
+                    //Получаем URL, по которому это будет всё происходить
+                    var url=$(this).attr('data-url')
+                    //Получаем содержимое текущего тэга li
+                    var tag_li = $(this).parent()
+                    //console.log('-----', url)
+                    //Выполняем AJAX-запрос
+                    $.ajax({
+                        url: url,
+                        type: 'GET',
+                        //Если запрос успешен, то возвращаем success:
+                        success: function (response) {
+                            //console.log(response)
+                            //Заполняем тэг li нашими новыми данными
+                            tag_li.html(response)
+                        }
+                    })
                 }
             })
-        }
-    })
+        </script>
+        {% endblock %}
 
-
-</script>
-
-{% endblock %}
+    ```
 
 
 
 И файл comments_item.html:
-
+    ```
                 <p>
                     Дата создания: {{ item.create_date }}<br>
                     Автор: {{ item.author }}<br>
@@ -602,7 +596,6 @@ def update_comment_status(request, pk, type):
                         <a data-url="{% url 'update_comment_status' item.id 'public' %}" role="button" class="update_status btn btn-primary btn-sm" href="#">Одобрить</a> /
                         <a data-url="{% url 'update_comment_status' item.id 'delete' %}" role="button" class="update_status btn btn-secondary btn-sm" href="#">Удалить</a>
                     {% endif %}
-
                     <br>
                 </p>
                 {% if status_comment %}
@@ -610,13 +603,14 @@ def update_comment_status(request, pk, type):
                         {{status_comment}}
                     </div>
                 {% endif %}
+    ```
 
 
 И добавляем middleware в settings.py:
-```
-MIDDLEWARE = [
-    ...
- 
-    'dinarapp2.middleware.CurrentRequestMiddlewareUser',
-]
-```
+    ```
+    MIDDLEWARE = [
+        ...
+     
+        'dinarapp2.middleware.CurrentRequestMiddlewareUser',
+    ]
+    ```
